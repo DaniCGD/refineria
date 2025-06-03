@@ -1,0 +1,58 @@
+name: Deploy Angular App to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build
+        run: npm run build -- --base-href=/contratacion-front/
+        
+      - name: List dist directory (for debugging)
+        run: ls -la dist/
+        
+      - name: Prepare deployment files
+        run: |
+          # Crear carpeta temporal para los archivos de despliegue
+          mkdir -p deploy-files
+          
+          # Copiar los archivos de la build a la carpeta de despliegue
+          if [ -d "dist/fuse" ]; then
+            cp -r dist/fuse/* deploy-files/
+          elif [ -d "dist" ]; then
+            cp -r dist/* deploy-files/
+          fi
+          
+          # Crear archivo .nojekyll
+          touch deploy-files/.nojekyll
+          
+          # Crear archivo 404.html para Angular routing
+          cp deploy-files/index.html deploy-files/404.html
+          
+          # Listar archivos para verificar
+          echo "Files ready for deployment:"
+          ls -la deploy-files/
+        
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: deploy-files  # Usar la carpeta temporal que creamos
+          branch: gh-pages
+          token: ${{ secrets.GITHUB_TOKEN }}
+          clean: true  # Elimina archivos que ya no existen en la carpeta de origen
