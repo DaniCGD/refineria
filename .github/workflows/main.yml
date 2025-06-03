@@ -22,7 +22,7 @@ jobs:
         run: npm ci
         
       - name: Build
-        run: npm run build -- --base-href=/contratacion-front/
+        run: npm run build -- --base-href=/refineria/
         
       - name: List dist directory (for debugging)
         run: ls -la dist/
