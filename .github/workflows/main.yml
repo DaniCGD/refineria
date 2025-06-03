@@ -54,5 +54,5 @@ jobs:
         with:
           folder: deploy-files  # Usar la carpeta temporal que creamos
           branch: gh-pages
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.DEPLOY_TOKEN }}
           clean: true  # Elimina archivos que ya no existen en la carpeta de origen
