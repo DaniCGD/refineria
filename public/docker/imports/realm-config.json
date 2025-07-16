@@ -1,0 +1,8 @@
+{
+    "realm": "master",
+    "enabled": true,
+    "loginTheme": "custom-theme",
+    "internationalizationEnabled": true,
+    "supportedLocales": ["es", "en"],
+    "defaultLocale": "es"
+}

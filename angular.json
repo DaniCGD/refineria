@@ -35,6 +35,8 @@
                             "quill"
                         ],
                         "assets": [
+                            "src/favicon.ico",
+                            "src/favicon.png",
                             "src/favicon-16x16.png",
                             "src/favicon-32x32.png",
                             "src/assets",

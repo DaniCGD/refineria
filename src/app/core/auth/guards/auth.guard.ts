@@ -1,28 +1,43 @@
 import { inject } from '@angular/core';
 import { CanActivateChildFn, CanActivateFn, Router } from '@angular/router';
-import { AuthService } from 'app/core/auth/auth.service';
+import { AuthService } from 'app/core/auth/service/auth.service';
 import { of, switchMap } from 'rxjs';
+import { KeycloakAuthGuard, KeycloakService } from 'keycloak-angular';
 
-export const AuthGuard: CanActivateFn | CanActivateChildFn = (route, state) =>
-{
-    const router: Router = inject(Router);
+export const AuthGuard: CanActivateFn | CanActivateChildFn = (route, state) => {
+    const keycloakService = inject(KeycloakService);
+    const router = inject(Router);
 
-    // Check the authentication status
-    return inject(AuthService).check().pipe(
-        switchMap((authenticated) =>
-        {
-            // If the user is not authenticated...
-            if ( !authenticated )
-            {
-                // Redirect to the sign-in page with a redirectUrl param
-                const redirectURL = state.url === '/sign-out' ? '' : `redirectURL=${state.url}`;
-                const urlTree = router.parseUrl(`sign-in?${redirectURL}`);
+    try {
+        const keycloakInstance = keycloakService.getKeycloakInstance();
 
-                return of(urlTree);
+        // CAMBIO 8: Solo verificar estado, no disparar login automático
+        if (!keycloakInstance.authenticated) {
+            // Redirigir a página de login manual
+            router.navigate(['/sign-in'], {
+                queryParams: { redirectURL: state.url },
+            });
+            return false;
+        }
+
+        // Verificar roles si están definidos
+        const requiredRoles = route.data?.['roles'] as string[];
+        if (requiredRoles && requiredRoles.length > 0) {
+            const hasRequiredRole = requiredRoles.some((role) =>
+                keycloakService.isUserInRole(role)
+            );
+
+            if (!hasRequiredRole) {
+                router.navigate(['/unauthorized']);
+                return false;
             }
+        }
 
-            // Allow the access
-            return of(true);
-        }),
-    );
+        return true;
+    } catch (error) {
+        console.error('Error en auth guard:', error);
+        // Si hay error, redirigir a login manual
+        router.navigate(['/sign-in']);
+        return false;
+    }
 };

@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak-server
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://aws-0-us-east-2.pooler.supabase.com:6543/postgres?user=postgres.kojgomgpyxasvgetjuhd&password=keycloak
+      KC_DB_USERNAME: postgres.kojgomgpyxasvgetjuhd
+      KC_DB_PASSWORD: keycloak
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT: false 
+      KC_HTTP_ENABLED: true 
+      KC_LOG_LEVEL: info
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+    command: start-dev
+
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./themes:/opt/keycloak/themes
+      - ./imports:/opt/keycloak/data/import
+    networks:
+      - keycloak-network
+
+networks:
+  keycloak-network:
+    driver: bridge

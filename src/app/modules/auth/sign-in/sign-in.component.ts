@@ -10,11 +10,15 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { fuseAnimations } from '@fuse/animations';
 import { FuseAlertComponent, FuseAlertType } from '@fuse/components/alert';
-import { AuthService } from 'app/core/auth/auth.service';
+import { AuthService } from 'app/core/auth/service/auth.service';
+import { KeycloakAuthService } from 'app/core/auth/service/keycloak-auth.service';
+
+import { KeycloakService } from 'keycloak-angular';
 
 @Component({
     selector     : 'auth-sign-in',
     templateUrl  : './sign-in.component.html',
+    styleUrls    : ['./sign-in.component.scss'],
     encapsulation: ViewEncapsulation.None,
     animations   : fuseAnimations,
     standalone   : true,
@@ -23,96 +27,63 @@ import { AuthService } from 'app/core/auth/auth.service';
 export class AuthSignInComponent implements OnInit
 {
     @ViewChild('signInNgForm') signInNgForm: NgForm;
-
+    public backgroundImage = 'assets/images/pages/sign-in/login-background.jpg';
     alert: { type: FuseAlertType; message: string } = {
         type   : 'success',
         message: '',
     };
     signInForm: UntypedFormGroup;
     showAlert: boolean = false;
+    isLoading: boolean = false;
 
-    /**
-     * Constructor
-     */
     constructor(
         private _activatedRoute: ActivatedRoute,
-        private _authService: AuthService,
+        //private _authService: AuthService,
+        private _authService: KeycloakAuthService,
         private _formBuilder: UntypedFormBuilder,
         private _router: Router,
+        private _keycloakService: KeycloakService
     )
     {
     }
 
-    // -----------------------------------------------------------------------------------------------------
-    // @ Lifecycle hooks
-    // -----------------------------------------------------------------------------------------------------
-
-    /**
-     * On init
-     */
     ngOnInit(): void
     {
+        // CAMBIO 9: Solo verificar si ya está autenticado, sin disparar verificaciones
+        try {
+            const keycloakInstance = this._keycloakService.getKeycloakInstance();
+            if (keycloakInstance.authenticated) {
+                const redirectURL = this._activatedRoute.snapshot.queryParamMap.get('redirectURL') || '/dashboard';
+                this._router.navigateByUrl(redirectURL);
+                return;
+            }
+        } catch (error) {
+            // Keycloak no inicializado, continuar con el formulario
+        }
+
         // Create the form
         this.signInForm = this._formBuilder.group({
-            email     : ['hughes.brian@company.com', [Validators.required, Validators.email]],
-            password  : ['admin', Validators.required],
+            email     : ['', [Validators.required, Validators.email]],
+            password  : ['', Validators.required],
             rememberMe: [''],
         });
     }
 
-    // -----------------------------------------------------------------------------------------------------
-    // @ Public methods
-    // -----------------------------------------------------------------------------------------------------
-
     /**
-     * Sign in
+     * CAMBIO 10: Sign in que solo redirige
      */
     signIn(): void
     {
-        // Return if the form is invalid
-        if ( this.signInForm.invalid )
-        {
-            return;
-        }
+        this.isLoading = true;
+        this._authService.redirectToKeycloakLogin();
+    }
 
-        // Disable the form
-        this.signInForm.disable();
-
-        // Hide the alert
-        this.showAlert = false;
-
-        // Sign in
-        this._authService.signIn(this.signInForm.value)
-            .subscribe(
-                () =>
-                {
-                    // Set the redirect url.
-                    // The '/signed-in-redirect' is a dummy url to catch the request and redirect the user
-                    // to the correct page after a successful sign in. This way, that url can be set via
-                    // routing file and we don't have to touch here.
-                    const redirectURL = this._activatedRoute.snapshot.queryParamMap.get('redirectURL') || '/signed-in-redirect';
-
-                    // Navigate to the redirect url
-                    this._router.navigateByUrl(redirectURL);
-
-                },
-                (response) =>
-                {
-                    // Re-enable the form
-                    this.signInForm.enable();
-
-                    // Reset the form
-                    this.signInNgForm.resetForm();
-
-                    // Set the alert
-                    this.alert = {
-                        type   : 'error',
-                        message: 'Wrong email or password',
-                    };
-
-                    // Show the alert
-                    this.showAlert = true;
-                },
-            );
+    /**
+     * Login directo con Keycloak
+     */
+    loginWithKeycloak(): void
+    {
+        this.isLoading = true;
+        this._authService.redirectToKeycloakLogin();
     }
 }
