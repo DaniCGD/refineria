@@ -2,7 +2,7 @@ import { I18nPluralPipe, NgIf } from '@angular/common';
 import { Component, ViewEncapsulation } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { fuseAnimations } from '@fuse/animations';
-import { AuthService } from 'app/core/auth/service/auth.service';
+import { AuthService } from 'app/shared/service/auth.service';
 
 @Component({
     selector     : 'sign-out-split-screen',

@@ -20,26 +20,7 @@ import { TranslocoHttpLoader } from './core/transloco/transloco.http-loader';
 import { KeycloakService } from 'keycloak-angular';
 import { environment } from '../../public/environments/environments';
 import { authInterceptor } from './core/auth/interceptors/auth.interceptor';
-
-function initializeKeycloak(keycloak: KeycloakService) {
-    return () =>
-        keycloak.init({
-            config: {
-                url: environment.keycloak.url,
-                realm: environment.keycloak.realm,
-                clientId: environment.keycloak.clientId,
-            },
-            initOptions: {
-                onLoad: undefined,
-                checkLoginIframe: false,
-                flow: 'standard'
-            },
-            loadUserProfileAtStartUp: false,
-            bearerExcludedUrls: ['/assets', '/public'],
-            //shouldAddToken: () => false,
-            //shouldUpdateToken: () => false
-        });
-}
+import { initializeKeycloak } from './core/config/keycloak-initializer';
 
 export const appConfig: ApplicationConfig = {
     providers: [

@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { KeycloakAuthService } from 'app/core/auth/service/keycloak-auth.service';
+import { KeycloakService } from 'keycloak-angular';
 
 @Component({
     selector: 'signed-in-redirect',
@@ -17,23 +17,54 @@ import { KeycloakAuthService } from 'app/core/auth/service/keycloak-auth.service
 export class SignedInRedirectComponent implements OnInit {
     
     constructor(
-        private _authService: KeycloakAuthService,
+        private _keycloakService: KeycloakService,
         private _router: Router
     ) {}
 
     ngOnInit(): void {
-        // Verificar autenticación y redirigir
-        this._authService.signInUsingToken().subscribe({
-            next: (authenticated) => {
-                if (authenticated) {
-                    this._router.navigate(['/dashboard']);
-                } else {
-                    this._router.navigate(['/sign-in'], { queryParams: { manual: 'true' } });
+        console.log('SignedInRedirectComponent: Iniciando');
+        this.processKeycloakCallback();
+    }
+
+    private async processKeycloakCallback(): Promise<void> {
+        try {
+            // Esperar un poco más para que Keycloak procese completamente
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            const keycloakInstance = this._keycloakService.getKeycloakInstance();
+            console.log('Keycloak authenticated:', keycloakInstance.authenticated);
+            
+            if (keycloakInstance.authenticated) {
+                try {
+                    // Obtener información del usuario
+                    const userProfile = await this._keycloakService.loadUserProfile();
+                    console.log('User profile:', userProfile);
+                    
+                    // Redirigir al dashboard
+                    const returnUrl = localStorage.getItem('returnUrl') || '/dashboards/project';
+                    localStorage.removeItem('returnUrl');
+                    
+                    console.log('Redirigiendo a:', returnUrl);
+                    await this._router.navigate([returnUrl]);
+                } catch (profileError) {
+                    console.error('Error cargando perfil:', profileError);
+                    // Aún así redirigir si está autenticado
+                    const returnUrl = localStorage.getItem('returnUrl') || '/dashboards/project';
+                    localStorage.removeItem('returnUrl');
+                    await this._router.navigate([returnUrl]);
                 }
-            },
-            error: () => {
-                this._router.navigate(['/sign-in'], { queryParams: { manual: 'true' } });
+            } else {
+                console.log('No autenticado, redirigiendo a sign-in');
+                await this._router.navigate(['/sign-in'], { 
+                    queryParams: { manual: 'false' } 
+                });
             }
-        });
+            
+        } catch (error) {
+            console.error('Error procesando callback de Keycloak:', error);
+            await this._router.navigate(['/sign-in'], { 
+                queryParams: { manual: 'true', error: 'callback_error' } 
+            });
+        }
     }
 }

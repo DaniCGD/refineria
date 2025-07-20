@@ -2,8 +2,8 @@ import { Injectable } from '@angular/core';
 import { KeycloakService } from 'keycloak-angular';
 import { Observable, from, of, throwError } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
-import { User } from '../../../shared/interface/user.interface';
-import { SignInCredentials } from '../../../shared/interface/sign-in-credentials.interface';
+import { User } from '../interface/user.interface';
+import { SignInCredentials } from '../interface/sign-in-credentials.interface';
 
 @Injectable({
     providedIn: 'root',
@@ -50,20 +50,19 @@ export class KeycloakAuthService {
      * CAMBIO 4: Redirección limpia a Keycloak
      */
     redirectToKeycloakLogin(): void {
-        const redirectUri = window.location.origin + '/signed-in-redirect';
-
-        // Usar directamente la instancia de Keycloak para evitar verificaciones
+        const baseUrl = window.location.origin;
+        const redirectPath = '/signed-in-redirect';
+        
         const keycloakInstance = this._keycloakService.getKeycloakInstance();
-
         keycloakInstance
             .login({
-                redirectUri: redirectUri,
+                redirectUri: baseUrl + redirectPath,
                 locale: 'es',
             })
             .catch((error) => {
                 console.error('Error en redirección a Keycloak:', error);
             });
-    }
+    }      
 
     /**
      * CAMBIO 5: Verificación manual después de redirección

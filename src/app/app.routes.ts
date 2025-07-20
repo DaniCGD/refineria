@@ -3,6 +3,7 @@ import { initialDataResolver } from 'app/app.resolvers';
 import { AuthGuard } from 'app/core/auth/guards/auth.guard';
 import { NoAuthGuard } from 'app/core/auth/guards/noAuth.guard';
 import { LayoutComponent } from 'app/layout/layout.component';
+import { SignedInRedirectComponent } from './modules/auth/signed-redirect/signed-in-redirect.component';
 
 // @formatter:off
 /* eslint-disable max-len */
@@ -10,17 +11,17 @@ import { LayoutComponent } from 'app/layout/layout.component';
 export const appRoutes: Route[] = [
 
     // Redirect empty path to '/dashboards/project'
-    {path: '', pathMatch : 'full', redirectTo: 'dashboards/project'},
-
-    // Redirect signed-in user to the '/dashboards/project'
-    //
-    // After the user signs in, the sign-in page will redirect the user to the 'signed-in-redirect'
-    // path. Below is another redirection for that path to redirect the user to the desired
-    // location. This is a small convenience to keep all main routes together here on this file.
-    //{path: 'signed-in-redirect', pathMatch : 'full', redirectTo: 'dashboards/project'},
+    {
+        path: '', 
+        pathMatch : 'full', 
+        redirectTo: 'dashboards/project'
+    },
     {
         path: 'signed-in-redirect',
-        loadComponent: () => import('./modules/auth/signed-redirect/signed-in-redirect.component').then(m => m.SignedInRedirectComponent)
+        component: SignedInRedirectComponent,
+        data: {
+            layout: 'empty'
+        },
     },
     // Auth routes for guests
     {

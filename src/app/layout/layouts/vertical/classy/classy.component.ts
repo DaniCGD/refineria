@@ -11,6 +11,7 @@ import { NavigationService } from 'app/core/navigation/navigation.service';
 import { Navigation } from 'app/core/navigation/navigation.types';
 import { UserService } from 'app/core/user/user.service';
 import { User } from 'app/core/user/user.types';
+import { KeycloakAuthService } from 'app/shared/service/keycloak-auth.service'; // Importar tu servicio
 import { LanguagesComponent } from 'app/layout/common/languages/languages.component';
 import { MessagesComponent } from 'app/layout/common/messages/messages.component';
 import { NotificationsComponent } from 'app/layout/common/notifications/notifications.component';
@@ -27,102 +28,115 @@ import { Subject, takeUntil } from 'rxjs';
     standalone   : true,
     imports      : [FuseLoadingBarComponent, FuseVerticalNavigationComponent, NotificationsComponent, UserComponent, NgIf, MatIconModule, MatButtonModule, LanguagesComponent, FuseFullscreenComponent, SearchComponent, ShortcutsComponent, MessagesComponent, RouterOutlet, QuickChatComponent],
 })
-export class ClassyLayoutComponent implements OnInit, OnDestroy
-{
+export class ClassyLayoutComponent implements OnInit, OnDestroy {
     isScreenSmall: boolean;
     navigation: Navigation;
-    user: User;
+    user: User | null = null; // CAMBIO: Inicializar como null
+    isLoadingUser = true; // CAMBIO: Añadir estado de carga
     private _unsubscribeAll: Subject<any> = new Subject<any>();
 
-    /**
-     * Constructor
-     */
     constructor(
         private _activatedRoute: ActivatedRoute,
         private _router: Router,
         private _navigationService: NavigationService,
         private _userService: UserService,
+        private _keycloakAuthService: KeycloakAuthService, // CAMBIO: Inyectar KeycloakAuthService
         private _fuseMediaWatcherService: FuseMediaWatcherService,
         private _fuseNavigationService: FuseNavigationService,
-    )
-    {
-    }
+    ) {}
 
-    // -----------------------------------------------------------------------------------------------------
-    // @ Accessors
-    // -----------------------------------------------------------------------------------------------------
-
-    /**
-     * Getter for current year
-     */
-    get currentYear(): number
-    {
+    get currentYear(): number {
         return new Date().getFullYear();
     }
 
-    // -----------------------------------------------------------------------------------------------------
-    // @ Lifecycle hooks
-    // -----------------------------------------------------------------------------------------------------
-
-    /**
-     * On init
-     */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Subscribe to navigation data
         this._navigationService.navigation$
             .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((navigation: Navigation) =>
-            {
+            .subscribe((navigation: Navigation) => {
                 this.navigation = navigation;
             });
 
-        // Subscribe to the user service
+        // CAMBIO: Suscribirse al UserService con manejo de undefined
         this._userService.user$
-            .pipe((takeUntil(this._unsubscribeAll)))
-            .subscribe((user: User) =>
-            {
-                this.user = user;
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe((user: User) => {
+                console.log('👤 Usuario desde UserService:', user);
+                this.user = user || null;
+                
+                // Si no hay usuario en UserService, intentar cargar desde Keycloak
+                if (!user && this._keycloakAuthService.isAuthenticated) {
+                    console.log('🔄 Usuario no encontrado en UserService, cargando desde Keycloak...');
+                    this.loadUserFromKeycloak();
+                } else if (!user) {
+                    this.isLoadingUser = false;
+                }
             });
 
         // Subscribe to media changes
         this._fuseMediaWatcherService.onMediaChange$
             .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(({matchingAliases}) =>
-            {
-                // Check if the screen is small
+            .subscribe(({matchingAliases}) => {
                 this.isScreenSmall = !matchingAliases.includes('md');
             });
+
+        // CAMBIO: Inicializar usuario si está autenticado
+        this.initializeUser();
     }
 
-    /**
-     * On destroy
-     */
-    ngOnDestroy(): void
-    {
-        // Unsubscribe from all subscriptions
+    ngOnDestroy(): void {
         this._unsubscribeAll.next(null);
         this._unsubscribeAll.complete();
     }
 
-    // -----------------------------------------------------------------------------------------------------
-    // @ Public methods
-    // -----------------------------------------------------------------------------------------------------
-
-    /**
-     * Toggle navigation
-     *
-     * @param name
-     */
-    toggleNavigation(name: string): void
-    {
-        // Get the navigation
+    toggleNavigation(name: string): void {
         const navigation = this._fuseNavigationService.getComponent<FuseVerticalNavigationComponent>(name);
-
-        if ( navigation )
-        {
-            // Toggle the opened status
+        if (navigation) {
             navigation.toggle();
         }
+    }
+
+    // -----------------------------------------------------------------------------------------------------
+    // @ Private methods
+    // -----------------------------------------------------------------------------------------------------
+
+    private initializeUser(): void {
+        console.log('🔄 Inicializando usuario en ClassyLayout...');
+        
+        // Si ya tenemos usuario, no hacer nada
+        if (this.user) {
+            this.isLoadingUser = false;
+            return;
+        }
+
+        // Si está autenticado pero no tenemos usuario, cargar desde Keycloak
+        if (this._keycloakAuthService.isAuthenticated) {
+            this.loadUserFromKeycloak();
+        } else {
+            this.isLoadingUser = false;
+        }
+    }
+
+    private loadUserFromKeycloak(): void {
+        this.isLoadingUser = true;
+        
+        this._keycloakAuthService.getUserProfile()
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe({
+                next: (user: User) => {
+                    console.log('✅ Usuario cargado desde Keycloak:', user);
+                    
+                    // Actualizar UserService para sincronizar
+                    this._userService.user = user;
+                    
+                    this.user = user;
+                    this.isLoadingUser = false;
+                },
+                error: (error) => {
+                    console.error('🔴 Error cargando usuario desde Keycloak:', error);
+                    this.user = null;
+                    this.isLoadingUser = false;
+                }
+            });
     }
 }
